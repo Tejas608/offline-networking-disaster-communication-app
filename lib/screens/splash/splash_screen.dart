@@ -1,8 +1,7 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../providers/chat_provider.dart';
 import '../../providers/profile_provider.dart';
 import '../home/home_screen.dart';
 import '../onboarding/registration_screen.dart';
@@ -18,31 +17,39 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    checkProfile();
+
+    _checkProfile();
   }
 
-  Future<void> checkProfile() async {
-    final profileProvider = Provider.of<ProfileProvider>(
-      context,
-      listen: false,
-    );
+  Future<void> _checkProfile() async {
+    final ProfileProvider profileProvider = context.read<ProfileProvider>();
+
+    final ChatProvider chatProvider = context.read<ChatProvider>();
 
     await profileProvider.loadProfile();
 
-    Timer(const Duration(seconds: 2), () {
-      if (!context.mounted) return;
+    await chatProvider.initialize();
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder:
-              (_) =>
-                  profileProvider.hasProfile
-                      ? const HomeScreen()
-                      : const RegistrationScreen(),
-        ),
-      );
-    });
+    await chatProvider.refreshLocalProfile();
+
+    await chatProvider.loadConnectedUsers();
+
+    await Future<void>.delayed(const Duration(seconds: 2));
+
+    if (!mounted) {
+      return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute<void>(
+        builder:
+            (_) =>
+                profileProvider.hasProfile
+                    ? const HomeScreen()
+                    : const RegistrationScreen(),
+      ),
+    );
   }
 
   @override

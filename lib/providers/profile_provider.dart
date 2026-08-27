@@ -8,11 +8,11 @@ class ProfileProvider extends ChangeNotifier {
   bool get hasProfile =>
       name != null &&
       phone != null &&
-      name!.isNotEmpty &&
-      phone!.isNotEmpty;
+      name!.trim().isNotEmpty &&
+      phone!.trim().isNotEmpty;
 
   Future<void> loadProfile() async {
-    final prefs = await SharedPreferences.getInstance();
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
 
     name = prefs.getString('name');
     phone = prefs.getString('phone');
@@ -24,22 +24,27 @@ class ProfileProvider extends ChangeNotifier {
     required String userName,
     required String phoneNumber,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
 
-    await prefs.setString('name', userName);
-    await prefs.setString('phone', phoneNumber);
+    await prefs.setString('name', userName.trim());
+
+    await prefs.setString('phone', phoneNumber.trim());
+
     await prefs.setBool('profileCreated', true);
 
-    name = userName;
-    phone = phoneNumber;
+    name = userName.trim();
+    phone = phoneNumber.trim();
 
     notifyListeners();
   }
 
   Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
 
-    await prefs.clear();
+    // Keep localUserId and SQLite data.
+    await prefs.remove('name');
+    await prefs.remove('phone');
+    await prefs.remove('profileCreated');
 
     name = null;
     phone = null;

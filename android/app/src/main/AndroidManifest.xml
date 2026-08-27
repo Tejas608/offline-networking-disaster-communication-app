@@ -1,22 +1,38 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- INTERNET -->
+    <!-- The application can still install on phones without Wi-Fi Direct.
+         We will handle unsupported devices inside the application. -->
+    <uses-feature
+        android:name="android.hardware.wifi.direct"
+        android:required="false" />
+
+    <!-- Socket communication -->
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- WIFI -->
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- Network status -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
 
+    <!-- Wi-Fi and Wi-Fi Direct -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
 
-    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
+    <!-- Android 13 and above -->
+    <uses-permission
+        android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="33" />
 
-    <!-- LOCATION -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Location is also required by your SOS/location module and
+         by Wi-Fi discovery on older Android versions. -->
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION" />
 
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission
+        android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-    <!-- BLUETOOTH OLD -->
+    <!-- Bluetooth permissions for Android 11 and below -->
     <uses-permission
         android:name="android.permission.BLUETOOTH"
         android:maxSdkVersion="30" />
@@ -25,13 +41,19 @@
         android:name="android.permission.BLUETOOTH_ADMIN"
         android:maxSdkVersion="30" />
 
-    <!-- BLUETOOTH NEW -->
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <!-- Bluetooth permissions for Android 12 and above -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="31" />
 
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_CONNECT"
+        tools:targetApi="31" />
 
-    <!-- NOTIFICATIONS -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Notifications -->
+    <uses-permission
+        android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:label="Offline Networking and Disaster Communication"
@@ -48,39 +70,30 @@
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
 
-            <!-- FLUTTER THEME -->
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
 
-            <!-- LAUNCHER -->
             <intent-filter>
-
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
-
             </intent-filter>
+
         </activity>
 
-        <!-- FLUTTER EMBEDDING -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
 
     </application>
 
-    <!-- TEXT PROCESSING -->
     <queries>
-
         <intent>
-
             <action android:name="android.intent.action.PROCESS_TEXT" />
 
             <data android:mimeType="text/plain" />
-
         </intent>
-
     </queries>
 
 </manifest>

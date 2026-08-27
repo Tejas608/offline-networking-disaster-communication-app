@@ -60,7 +60,7 @@ class PermissionsScreen extends StatelessWidget {
 
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
 
             blurRadius: 10,
 
@@ -74,7 +74,7 @@ class PermissionsScreen extends StatelessWidget {
           CircleAvatar(
             radius: 28,
 
-            backgroundColor: color.withOpacity(0.15),
+            backgroundColor: color.withValues(alpha: 0.15),
 
             child: Icon(icon, color: color, size: 30),
           ),

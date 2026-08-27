@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../nearby/nearby_users_screen.dart';
-import '../chat/connection_screen.dart';
-import '../sos/sos_screen.dart';
+import '../chat/chat_list_screen.dart';
 import '../map/location_screen.dart';
+import '../nearby/nearby_users_screen.dart';
 import '../profile/profile_screen.dart';
+import '../sos/sos_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -28,13 +28,12 @@ class HomeScreen extends StatelessWidget {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                MaterialPageRoute<void>(builder: (_) => const ProfileScreen()),
               );
             },
           ),
         ],
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -51,7 +50,9 @@ class HomeScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const NearbyUsersScreen()),
+                  MaterialPageRoute<void>(
+                    builder: (_) => const NearbyUsersScreen(),
+                  ),
                 );
               },
             ),
@@ -63,7 +64,9 @@ class HomeScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const ConnectionScreen()),
+                  MaterialPageRoute<void>(
+                    builder: (_) => const ChatListScreen(),
+                  ),
                 );
               },
             ),
@@ -75,7 +78,7 @@ class HomeScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const SosScreen()),
+                  MaterialPageRoute<void>(builder: (_) => const SosScreen()),
                 );
               },
             ),
@@ -87,19 +90,9 @@ class HomeScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const LocationScreen()),
-                );
-              },
-            ),
-
-            const SizedBox(height: 20),
-
-            homeButton(
-              text: 'Profile',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                  MaterialPageRoute<void>(
+                    builder: (_) => const LocationScreen(),
+                  ),
                 );
               },
             ),

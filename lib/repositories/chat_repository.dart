@@ -5,118 +5,218 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 class ChatRepository {
-  /// SERVER SOCKET
-  ServerSocket? _serverSocket;
+  static const int port = 8888;
 
-  /// CLIENT SOCKET
+  ServerSocket? _serverSocket;
   Socket? _socket;
 
-  /// MESSAGE CONTROLLER
-  final StreamController<String> _messageController =
-      StreamController.broadcast();
+  StreamSubscription<Socket>? _serverSubscription;
 
-  /// MESSAGE STREAM
-  Stream<String> get messagesStream => _messageController.stream;
+  StreamSubscription<String>? _socketSubscription;
 
-  /// START SERVER
-  Future<void> startServer() async {
+  final StreamController<Map<String, dynamic>> _packetController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
+  final StreamController<bool> _connectionController =
+      StreamController<bool>.broadcast();
+
+  Stream<Map<String, dynamic>> get packetStream => _packetController.stream;
+
+  Stream<bool> get connectionStream => _connectionController.stream;
+
+  bool get isServerRunning => _serverSocket != null;
+
+  bool get isConnected => _socket != null;
+
+  String? get remoteIpAddress => _socket?.remoteAddress.address;
+
+  Future<bool> startServer() async {
+    if (_serverSocket != null) {
+      return true;
+    }
+
     try {
-      _serverSocket ??= await ServerSocket.bind(InternetAddress.anyIPv4, 8888);
+      _serverSocket = await ServerSocket.bind(InternetAddress.anyIPv4, port);
 
-      debugPrint('Server Started on Port 8888');
+      debugPrint('TCP server started on port $port');
 
-      _serverSocket!.listen(
-        (client) {
-          debugPrint('Client Connected: ${client.remoteAddress.address}');
+      _serverSubscription = _serverSocket!.listen(
+        (Socket client) async {
+          debugPrint(
+            'TCP client connected: '
+            '${client.remoteAddress.address}',
+          );
 
-          _socket = client;
-
-          _listenForMessages();
+          await _attachSocket(client);
         },
-        onError: (error) {
-          debugPrint('Server Error: $error');
+        onError: (Object error) {
+          debugPrint('TCP server error: $error');
+        },
+        onDone: () {
+          debugPrint('TCP server closed');
         },
       );
-    } catch (e) {
-      debugPrint('Start Server Error: $e');
+
+      return true;
+    } catch (error) {
+      debugPrint(
+        'Unable to start TCP server: '
+        '$error',
+      );
+
+      return false;
     }
   }
 
-  /// CONNECT TO SERVER
-  Future<void> connectToServer(String ipAddress) async {
+  Future<bool> connectToServer(String ipAddress) async {
+    if (ipAddress.trim().isEmpty) {
+      return false;
+    }
+
+    if (_socket != null) {
+      return true;
+    }
+
     try {
-      _socket = await Socket.connect(ipAddress, 8888);
+      final Socket socket = await Socket.connect(
+        ipAddress,
+        port,
+        timeout: const Duration(seconds: 12),
+      );
 
-      debugPrint('Connected to Server: $ipAddress');
+      debugPrint(
+        'TCP connected to '
+        '$ipAddress:$port',
+      );
 
-      _listenForMessages();
-    } catch (e) {
-      debugPrint('Connection Error: $e');
+      await _attachSocket(socket);
+
+      return true;
+    } catch (error) {
+      debugPrint('TCP connection error: $error');
+
+      return false;
     }
   }
 
-  /// SEND MESSAGE
-  void sendMessage(String message) {
+  Future<void> _attachSocket(Socket socket) async {
+    await _socketSubscription?.cancel();
+
+    if (_socket != null && !identical(_socket, socket)) {
+      _socket!.destroy();
+    }
+
+    _socket = socket;
+
+    _connectionController.add(true);
+
+    final Socket activeSocket = socket;
+
+    _socketSubscription = activeSocket
+        .cast<List<int>>()
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .listen(
+          (String data) {
+            _processIncomingData(data);
+          },
+          onError: (Object error) {
+            debugPrint('TCP socket error: $error');
+
+            _handleSocketClosed(activeSocket);
+          },
+          onDone: () {
+            debugPrint('TCP connection closed');
+
+            _handleSocketClosed(activeSocket);
+          },
+          cancelOnError: false,
+        );
+  }
+
+  void _processIncomingData(String data) {
     try {
-      if (_socket != null) {
-        final jsonMessage = jsonEncode({'message': message});
+      final dynamic decoded = jsonDecode(data);
 
-        _socket!.write('$jsonMessage\n');
-
-        debugPrint('Message Sent: $message');
-      } else {
-        debugPrint('Send Failed: Socket is null');
+      if (decoded is! Map) {
+        return;
       }
-    } catch (e) {
-      debugPrint('Send Message Error: $e');
+
+      final Map<String, dynamic> packet = Map<String, dynamic>.from(decoded);
+
+      _packetController.add(packet);
+
+      debugPrint(
+        'TCP packet received: '
+        '${packet['type']}',
+      );
+    } catch (error) {
+      debugPrint('TCP JSON decode error: $error');
     }
   }
 
-  /// LISTEN FOR INCOMING MESSAGES
-  void _listenForMessages() {
+  Future<bool> sendPacket(Map<String, dynamic> packet) async {
+    final Socket? socket = _socket;
+
+    if (socket == null) {
+      debugPrint(
+        'Cannot send packet: '
+        'socket is not connected',
+      );
+
+      return false;
+    }
+
     try {
-      _socket
-          ?.cast<List<int>>()
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen(
-            (data) {
-              try {
-                final decoded = jsonDecode(data);
+      final String encodedPacket = '${jsonEncode(packet)}\n';
 
-                final message = decoded['message'];
+      socket.add(utf8.encode(encodedPacket));
 
-                _messageController.add(message);
+      await socket.flush();
 
-                debugPrint('Message Received: $message');
-              } catch (e) {
-                debugPrint('JSON Decode Error: $e');
-              }
-            },
-            onError: (error) {
-              debugPrint('Socket Listen Error: $error');
-            },
-            onDone: () {
-              debugPrint('Connection Closed');
-            },
-          );
-    } catch (e) {
-      debugPrint('Listen Error: $e');
+      debugPrint(
+        'TCP packet sent: '
+        '${packet['type']}',
+      );
+
+      return true;
+    } catch (error) {
+      debugPrint('TCP send error: $error');
+
+      return false;
     }
   }
 
-  /// CLOSE CONNECTION
-  void dispose() {
-    try {
-      _socket?.destroy();
-
-      _serverSocket?.close();
-
-      _messageController.close();
-
-      debugPrint('Chat Repository Disposed');
-    } catch (e) {
-      debugPrint('Dispose Error: $e');
+  void _handleSocketClosed(Socket socket) {
+    if (!identical(_socket, socket)) {
+      return;
     }
+
+    _socket = null;
+    _connectionController.add(false);
+  }
+
+  Future<void> disconnectSocket() async {
+    await _socketSubscription?.cancel();
+
+    _socketSubscription = null;
+
+    _socket?.destroy();
+    _socket = null;
+
+    _connectionController.add(false);
+  }
+
+  Future<void> dispose() async {
+    await disconnectSocket();
+
+    await _serverSubscription?.cancel();
+    _serverSubscription = null;
+
+    await _serverSocket?.close();
+    _serverSocket = null;
+
+    await _packetController.close();
+    await _connectionController.close();
   }
 }
